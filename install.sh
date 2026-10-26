@@ -65,8 +65,11 @@ if ! pkg info -q -x '^linux_base-' >/dev/null 2>&1; then
   missing_steps="${missing_steps}2"
 fi
 
-# 3. linprocfs mounted under /compat/linux/proc?
-if ! mount | grep -q 'linprocfs.*/compat/linux/proc'; then
+# 3. linprocfs mounted under /compat/linux/proc? Probe a file linprocfs
+#    provides rather than parsing mount(8): inside a jail with the default
+#    enforce_statfs=2, mounts made from the host into the jail path work but
+#    are hidden from mount(8) and df(1), so the grep would false-negative.
+if [ ! -r /compat/linux/proc/cpuinfo ]; then
   need_root=1
   missing_steps="${missing_steps}3"
 fi
