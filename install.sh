@@ -49,9 +49,11 @@ done
 need_root=0
 missing_steps=""
 
-# 1. Linux ABI available? (covers both kmod-loaded and kernel-builtin cases —
-#    on FreeBSD 15 linux64 is compiled into GENERIC, so `kldstat -m linux64`
-#    returns false even though Linux compat is available)
+# 1. Linux ABI available? Probe the sysctl rather than `kldstat -m linux64` so
+#    the check holds whether the ABI is a loaded kmod or built into a custom
+#    kernel. Note GENERIC does not build it in: on 15.1-RELEASE GENERIC,
+#    `sysctl kern.conftxt` lists COMPAT_LINUXKPI only (no COMPAT_LINUX), so
+#    `kldload linux64` is still required there.
 if ! sysctl -n compat.linux.osrelease >/dev/null 2>&1; then
   need_root=1
   missing_steps="${missing_steps}1"
@@ -63,8 +65,11 @@ if ! pkg info -q -x '^linux_base-' >/dev/null 2>&1; then
   missing_steps="${missing_steps}2"
 fi
 
-# 3. linprocfs mounted under /compat/linux/proc?
-if ! mount | grep -q 'linprocfs.*/compat/linux/proc'; then
+# 3. linprocfs mounted under /compat/linux/proc? Probe a file linprocfs
+#    provides rather than parsing mount(8): inside a jail with the default
+#    enforce_statfs=2, mounts made from the host into the jail path work but
+#    are hidden from mount(8) and df(1), so the grep would false-negative.
+if [ ! -r /compat/linux/proc/cpuinfo ]; then
   need_root=1
   missing_steps="${missing_steps}3"
 fi
