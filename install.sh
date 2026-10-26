@@ -49,9 +49,11 @@ done
 need_root=0
 missing_steps=""
 
-# 1. Linux ABI available? (covers both kmod-loaded and kernel-builtin cases —
-#    on FreeBSD 15 linux64 is compiled into GENERIC, so `kldstat -m linux64`
-#    returns false even though Linux compat is available)
+# 1. Linux ABI available? Probe the sysctl rather than `kldstat -m linux64` so
+#    the check holds whether the ABI is a loaded kmod or built into a custom
+#    kernel. Note GENERIC does not build it in: on 15.1-RELEASE GENERIC,
+#    `sysctl kern.conftxt` lists COMPAT_LINUXKPI only (no COMPAT_LINUX), so
+#    `kldload linux64` is still required there.
 if ! sysctl -n compat.linux.osrelease >/dev/null 2>&1; then
   need_root=1
   missing_steps="${missing_steps}1"
